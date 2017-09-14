@@ -1,0 +1,13 @@
+[Unit]
+Description=Create the database
+Requires=mysqld.service httpd.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/ds3/ds3/mysqlds3
+PassEnvironment=DB_SIZE DB_UNITS
+ExecStart=/root/install.exp
+
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,63 @@
+#!/usr/bin/expect
+
+set timeout -1
+
+if {[info exists env(DB_SIZE)]} {
+        set dbsize $env(DB_SIZE)
+} else {
+        set dbsize 100
+}
+
+if {[info exists env(DB_UNITS)]} {
+        set dbunits $env(DB_UNITS)
+} else {
+        set dbunits MB
+}
+
+#Initialize the database and create user
+spawn /usr/sbin/mysqld --initialize-insecure --user=mysql
+expect eof
+spawn systemctl enable mysqld
+expect eof
+spawn systemctl start mysqld
+expect eof
+spawn mysql -e "grant ALL PRIVILEGES on *.* to 'web'@'localhost' IDENTIFIED BY 'web'"
+expect eof
+spawn mysql -e "flush privileges"
+expect eof
+
+#Run the install script
+cd /root/ds3/ds3
+spawn /usr/bin/perl Install_DVDStore.pl
+expect "Please enter database size (integer expected) : "
+send "$dbsize\n"
+expect "Please enter whether above database size is in (MB / GB) : "
+send "$dbunits\n"
+expect "Please enter database type (MSSQL / MYSQL / PGSQL / ORACLE) : "
+send "MYSQL\n"
+expect "Please enter system type on which DB Server is installed (WIN / LINUX) : "
+send "LINUX\n"
+expect eof
+
+#Run the config script
+spawn /usr/bin/perl CreateConfigFile.pl
+expect "Please enter target host(s) (database/web server hostname or IP Address) : "
+send "localhost\n"
+expect "Please enter database size (e.g. Input can be like 30MB, 80GB ,etc) : "
+send "$dbsize$dbunits\n"
+expect "Please enter target hostname for perfmon CPU% display (windows only) : "
+send "\n"
+expect "Please enter <username>:<password>:<IP Address> for linux machines for CPU % display (linux only) : "
+send "web:web:localhost\n"
+expect "Please enter if you want detailed view of runtime statistics of each target machine ( Y / N): "
+send "N\n"
+expect eof
+
+#Create the database in mysql
+cd /root/ds3/ds3/mysqlds3
+spawn /bin/sh mysqlds3_create_all.sh 
+expect eof
+
+#Stop this from running at next boot
+spawn systemctl disable createdb.service
+expect eof
